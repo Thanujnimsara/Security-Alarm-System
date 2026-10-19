@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Ehelepola Hotel | Owner Security & Audit Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand-section">
+        <div class="brand-logo">🛡️</div>
+        <div>
+          <h1 class="brand-title">THE EHELEPOLA HOTEL</h1>
+          <div class="brand-subtitle">
+            <span>Owner Door Security & Check-in / Check-out Alarm</span>
+            <span>•</span>
+            <span id="liveClock">--:--:--</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="nav-tabs">
+        <button class="tab-btn active" id="tabOwnerBtn" onclick="switchTab('owner')">
+          👑 Owner Alarm Center
+        </button>
+        <button class="tab-btn" id="tabExcelBtn" onclick="switchTab('excel')">
+          📊 Manager Bookings (Excel Sheet)
+        </button>
+        <button class="tab-btn" id="tabHardwareBtn" onclick="switchTab('hardware')">
+          ⚡ PST-G30 Sensor Lab
+        </button>
+      </nav>
+
+      <!-- Tone Selector & System Controls -->
+      <div class="system-status-pills">
+        <!-- Tone Selector Dropdown -->
+        <div class="tone-selector-wrap">
+          <label style="font-size: 0.72rem; color: #94a3b8; font-weight: 600;">ALARM TONE:</label>
+          <select id="alarmToneSelect" class="tone-select" onchange="changeAlarmTone()">
+            <option value="voice_chime">🗣️ Smart Voice + Luxury Chime</option>
+            <option value="hotel_chime">🔔 Luxury Hotel Ding-Dong</option>
+            <option value="digital_radar">⚡ Digital Radar Beep</option>
+            <option value="security_siren">🚨 High-Pitch Security Siren</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" onclick="testCurrentTone()" title="Test Sound">
+            🔊 Test Tone
+          </button>
+        </div>
+
+        <button class="btn btn-secondary" id="soundToggleBtn" onclick="toggleSound()">
+          🔔 Sound: ON
+        </button>
+
+        <div class="status-pill status-live" id="streamStatus">
+          <span class="indicator"></span>
+          <span>Live Alerts</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Live Alarm Banner -->
+  <div id="securitySirenBanner" class="siren-banner" style="display: none;">
+    <div class="siren-content">
+      <div class="siren-icon" id="sirenIcon">🚨</div>
+      <div class="siren-text">
+        <h4 id="sirenTitle">SECURITY ALERT</h4>
+        <p id="sirenDesc">Door event detected. Owner SMS dispatched.</p>
+      </div>
+    </div>
+    <div class="siren-actions">
+      <button class="btn btn-danger" onclick="viewLatestAlert()">View Details</button>
+      <button class="btn btn-secondary" onclick="dismissBanner()">Mute / Dismiss</button>
+    </div>
+  </div>
+
+  <main class="main-wrapper">
+
+    <!-- KPI Stats Overview -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(99, 102, 241, 0.15); color: #818cf8;">🏨</div>
+        <div class="stat-info">
+          <div class="stat-value" id="kpiTotalRooms">5</div>
+          <div class="stat-label">Total Rooms</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">🚪</div>
+        <div class="stat-info">
+          <div class="stat-value" id="kpiOpenDoors">5</div>
+          <div class="stat-label">Doors Open</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(6, 182, 212, 0.15); color: #22d3ee;">🔒</div>
+        <div class="stat-info">
+          <div class="stat-value" id="kpiClosedDoors">0</div>
+          <div class="stat-label">Doors Closed</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(225, 29, 72, 0.15); color: #f43f5e;">⚠️</div>
+        <div class="stat-info">
+          <div class="stat-value" id="kpiActiveAlerts" style="color: #f43f5e;">0</div>
+          <div class="stat-label">Unresolved Alerts</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- TAB 1: OWNER ALARM CENTER (NO BOOKING BUTTONS) -->
+    <!-- ============================================== -->
+    <section id="sectionOwner">
+      <div class="section-title-bar">
+        <div>
+          <h2 class="section-title">
+            <span>Room Status & Door Alarm Matrix (Room 01 — Room 10)</span>
+          </h2>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">
+            Owner View: Door Check-in & Check-out Alarms for 10 Rooms.
+          </p>
+        </div>
+        <button class="btn btn-secondary" onclick="loadAllData()">🔄 Refresh</button>
+      </div>
+
+      <!-- Rooms Grid (Purely Door & Occupancy Monitoring for Owner) -->
+      <div class="rooms-grid" id="roomsContainer">
+        <!-- Rendered dynamically without booking buttons -->
+      </div>
+
+      <!-- Live Door Check-in / Check-out & Security Alerts Log -->
+      <div class="data-table-container">
+        <div class="table-header-bar">
+          <div>
+            <h3 style="font-size: 1.1rem; font-weight: 700;">🚨 Owner Alarm & Door Event Notifications</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">
+              Every door event (Check-in door closed, Check-out door opened, or Unauthorized closed) triggers an alarm sound and Owner SMS.
+            </p>
+          </div>
+        </div>
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Time</th>
+              <th>Room</th>
+              <th>Event / Alarm Type</th>
+              <th>Alert Details</th>
+              <th>Severity</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="alertsTableBody">
+            <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Loading alerts...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Tamper-Proof Audit Trail -->
+      <div class="data-table-container">
+        <div class="table-header-bar">
+          <div>
+            <h3 style="font-size: 1.1rem; font-weight: 700;">📜 Tamper-Proof Audit Trail (Manager Actions)</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">
+              Manager cannot edit or delete these audit logs. Verified chronological records.
+            </p>
+          </div>
+        </div>
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Actor</th>
+              <th>Action</th>
+              <th>Entity</th>
+              <th>Target ID</th>
+              <th>Audit Log Details</th>
+              <th>Integrity</th>
+            </tr>
+          </thead>
+          <tbody id="auditTableBody">
+            <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Loading audit trail...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================================== -->
+    <!-- TAB 2: MANAGER BOOKINGS (EXCEL SHEET VIEW)     -->
+    <!-- ============================================== -->
+    <section id="sectionExcel" style="display: none;">
+      <div class="excel-toolbar-card">
+        <div class="excel-toolbar-header">
+          <div>
+            <h2 style="font-size: 1.3rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+              <span>📊 Manager Bookings Master Sheet</span>
+              <span class="tag-badge tag-success">Excel Mode</span>
+            </h2>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">
+              Owner Audit View: Inspect all bookings entered by Manager with full payment and timestamp reconciliation.
+            </p>
+          </div>
+          <div style="display: flex; gap: 0.6rem;">
+            <button class="btn btn-primary" onclick="exportBookingsToCSV()">
+              📥 Download Excel (.CSV)
+            </button>
+            <button class="btn btn-secondary" onclick="loadBookings()">
+              🔄 Refresh Sheet
+            </button>
+          </div>
+        </div>
+
+        <!-- Excel Search and Summary Cards -->
+        <div class="excel-summary-row">
+          <div class="excel-mini-stat">
+            <span class="lbl">Total Bookings</span>
+            <span class="val" id="excelTotalCount">0</span>
+          </div>
+          <div class="excel-mini-stat">
+            <span class="lbl">Total Revenue (LKR)</span>
+            <span class="val" id="excelTotalRevenue" style="color: #34d399;">Rs. 0</span>
+          </div>
+          <div class="excel-mini-stat">
+            <span class="lbl">Collected / Paid</span>
+            <span class="val" id="excelPaidRevenue" style="color: #38bdf8;">Rs. 0</span>
+          </div>
+          <div class="excel-mini-stat">
+            <span class="lbl">Pending Payment</span>
+            <span class="val" id="excelPendingRevenue" style="color: #f43f5e;">Rs. 0</span>
+          </div>
+        </div>
+
+        <div style="margin-top: 1rem;">
+          <input type="text" id="excelSearchInput" class="form-input" placeholder="🔍 Search by customer name, booking code, phone or room..." onkeyup="filterExcelTable()">
+        </div>
+      </div>
+
+      <!-- Excel Spreadsheet Grid -->
+      <div class="excel-grid-container">
+        <table class="excel-table" id="excelSpreadsheetTable">
+          <thead>
+            <tr>
+              <th style="width: 40px;">#</th>
+              <th>Booking Code</th>
+              <th>Room</th>
+              <th>Customer Name</th>
+              <th>Phone</th>
+              <th>Check-in Time</th>
+              <th>Check-out Time</th>
+              <th>Amount (LKR)</th>
+              <th>Payment Method</th>
+              <th>Payment Status</th>
+              <th>Booking Status</th>
+              <th>Created By</th>
+            </tr>
+          </thead>
+          <tbody id="excelTableBody">
+            <tr><td colspan="12" style="text-align: center; padding: 2rem; color: var(--text-muted);">Loading Excel Records...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+
+
+    <!-- ============================================== -->
+    <!-- TAB 4: PST-G30 HARDWARE SENSOR LAB             -->
+    <!-- ============================================== -->
+    <section id="sectionHardware" style="display: none;">
+      <div class="guide-card">
+        <h2 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 0.5rem;">
+          ⚡ TURBOGEAR PST-G30 Alarm Panel & Door Sensor Setup
+        </h2>
+        <p style="font-size: 0.88rem; color: #cbd5e1;">
+          Connect your PST-G30 door magnetic sensors for Room 01 to Room 05 to trigger automated verification.
+        </p>
+
+        <div class="guide-step">
+          <div class="step-num">1</div>
+          <div>
+            <strong>Sensor Zone Assignment:</strong>
+            <p style="font-size: 0.82rem; color: var(--text-muted);">
+              Pair each wireless door contact to zones: Zone 1 = Room 01, Zone 2 = Room 02 ... Zone 10 = Room 10.
+            </p>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="step-num">2</div>
+          <div>
+            <strong>HTTP Webhook Endpoint:</strong>
+            <p style="font-size: 0.82rem; color: var(--text-muted);">
+              If using Wi-Fi / ESP bridge / SMS gateway, POST door events directly to:
+            </p>
+            <div class="code-box" id="webhookDisplayUrl">http://localhost:5000/api/door-events</div>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="step-num">3</div>
+          <div>
+            <strong>JSON Payload Structure:</strong>
+            <div class="code-box">
+{
+  "room_id": 3,
+  "door_status": "CLOSED",
+  "source": "PST_G30_ZONE_3"
+}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Sensor Simulation Rack -->
+      <div class="section-title-bar">
+        <h3 class="section-title">🧪 1-Click Door Sensor Simulator</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">
+          Simulate door open/close events to test Check-in door closed & Check-out door open alerts right away.
+        </p>
+      </div>
+
+      <div class="rooms-grid" id="sensorRackContainer">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- New Booking Modal (For Manager) -->
+  <div id="bookingModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">Manager Desk: New Booking</h3>
+        <button class="btn-close" onclick="closeBookingModal()">&times;</button>
+      </div>
+      <form id="bookingForm" onsubmit="submitBooking(event)">
+        <div class="form-group">
+          <label class="form-label">Select Room</label>
+          <select id="bookRoomSelect" class="form-select" required>
+            <option value="1">Room 01</option>
+            <option value="2">Room 02</option>
+            <option value="3">Room 03</option>
+            <option value="4">Room 04</option>
+            <option value="5">Room 05</option>
+            <option value="6">Room 06</option>
+            <option value="7">Room 07</option>
+            <option value="8">Room 08</option>
+            <option value="9">Room 09</option>
+            <option value="10">Room 10</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Customer Name</label>
+            <input type="text" id="bookCustomerName" class="form-input" placeholder="e.g. Kamal Perera" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Customer Phone</label>
+            <input type="text" id="bookCustomerPhone" class="form-input" placeholder="+94 77 123 4567">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Amount (LKR)</label>
+            <input type="number" id="bookAmount" class="form-input" placeholder="e.g. 5000" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Payment Method</label>
+            <select id="bookPaymentMethod" class="form-select">
+              <option value="CASH">Cash</option>
+              <option value="CARD">Credit/Debit Card</option>
+              <option value="BANK_TRANSFER">Bank Transfer</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Payment Status</label>
+          <select id="bookPaymentStatus" class="form-select">
+            <option value="PAID">PAID (Full)</option>
+            <option value="PENDING">PENDING</option>
+          </select>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 1.5rem;">
+          <button type="button" class="btn btn-secondary" onclick="closeBookingModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Booking</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="client-engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

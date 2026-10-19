@@ -159,9 +159,9 @@
       const p = document.getElementById('passwordInput').value.trim();
 
       if (u === 'owner' && p === 'owner123') {
-        window.location.href = '/index.html'; // Owner Security Dashboard
+        window.location.href = 'index.html'; // Owner Security Dashboard
       } else if (u === 'manager' && (p === 'manager123' || p === '1234')) {
-        window.location.href = '/manager.html'; // Innocent Front Desk
+        window.location.href = 'manager.html'; // Innocent Front Desk
       } else {
         alert('Invalid Username or Password! Please try again.');
       }

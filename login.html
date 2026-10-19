@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Restaurant Portal | Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .login-wrapper {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .login-card {
+      background: rgba(18, 24, 38, 0.85);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7);
+      text-align: center;
+    }
+    .portal-avatar {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 1.25rem auto;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      background: linear-gradient(135deg, #4f46e5, #06b6d4);
+      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
+    }
+    .portal-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 4px;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .portal-tab-btn {
+      padding: 9px;
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      font-weight: 600;
+      font-size: 0.82rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .portal-tab-btn.active {
+      background: linear-gradient(135deg, #4f46e5, #3b82f6);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+    .login-btn {
+      width: 100%;
+      padding: 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-top: 1rem;
+    }
+    .notice-box {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 1.5rem;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-wrapper">
+    <div class="login-card">
+      <div class="portal-avatar" id="portalIcon">🏨</div>
+      <h2 style="font-size: 1.55rem; font-weight: 800; margin-bottom: 0.3rem; letter-spacing: -0.01em;" id="portalTitle">
+        THE EHELEPOLA HOTEL
+      </h2>
+      <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 1.5rem;" id="portalDesc">
+        Front Desk Room Billing & Reservation System
+      </p>
+
+      <!-- Role Selector -->
+      <div class="portal-tabs">
+        <button class="portal-tab-btn active" id="btnRoleManager" onclick="selectRole('manager')">
+          👔 Front Desk (Manager)
+        </button>
+        <button class="portal-tab-btn" id="btnRoleOwner" onclick="selectRole('owner')">
+          👑 Owner (Private)
+        </button>
+      </div>
+
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="form-group" style="text-align: left;">
+          <label class="form-label">Username</label>
+          <input type="text" id="usernameInput" class="form-input" value="manager" required autocomplete="username">
+        </div>
+
+        <div class="form-group" style="text-align: left;">
+          <label class="form-label">Password / PIN</label>
+          <input type="password" id="passwordInput" class="form-input" value="manager123" required autocomplete="current-password">
+        </div>
+
+        <button type="submit" class="btn btn-primary login-btn" id="submitLoginBtn">
+          Login to Front Desk ➔
+        </button>
+      </form>
+
+      <div class="notice-box" id="loginNotice">
+        Front Desk terminal for room billing and guest reservations.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let selectedRole = 'manager';
+
+    function selectRole(role) {
+      selectedRole = role;
+      document.getElementById('btnRoleManager').classList.toggle('active', role === 'manager');
+      document.getElementById('btnRoleOwner').classList.toggle('active', role === 'owner');
+
+      if (role === 'manager') {
+        document.getElementById('portalIcon').innerText = '🏨';
+        document.getElementById('portalIcon').style.background = 'linear-gradient(135deg, #059669, #10b981)';
+        document.getElementById('portalTitle').innerText = 'THE EHELEPOLA HOTEL';
+        document.getElementById('portalDesc').innerText = 'Front Desk Room Billing & Reservation System';
+        document.getElementById('usernameInput').value = 'manager';
+        document.getElementById('passwordInput').value = 'manager123';
+        document.getElementById('submitLoginBtn').innerText = 'Login to Front Desk ➔';
+        document.getElementById('loginNotice').innerText = 'Front Desk terminal for room billing and guest reservations.';
+      } else {
+        document.getElementById('portalIcon').innerText = '🛡️';
+        document.getElementById('portalIcon').style.background = 'linear-gradient(135deg, #4f46e5, #06b6d4)';
+        document.getElementById('portalTitle').innerText = 'THE EHELEPOLA HOTEL';
+        document.getElementById('portalDesc').innerText = 'Owner Door Security & Audit Center (Private)';
+        document.getElementById('usernameInput').value = 'owner';
+        document.getElementById('passwordInput').value = 'owner123';
+        document.getElementById('submitLoginBtn').innerText = 'Unlock Security Dashboard ➔';
+        document.getElementById('loginNotice').innerText = '🔒 Protected Owner Command Center with real-time breach detection.';
+      }
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const u = document.getElementById('usernameInput').value.trim();
+      const p = document.getElementById('passwordInput').value.trim();
+
+      if (u === 'owner' && p === 'owner123') {
+        window.location.href = 'index.html'; // Owner Security Dashboard
+      } else if (u === 'manager' && (p === 'manager123' || p === '1234')) {
+        window.location.href = 'manager.html'; // Innocent Front Desk
+      } else {
+        alert('Invalid Username or Password! Please try again.');
+      }
+    }
+  </script>
+</body>
+</html>
