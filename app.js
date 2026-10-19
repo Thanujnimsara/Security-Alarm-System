@@ -630,13 +630,15 @@ function renderAlerts() {
   }
 
   tbody.innerHTML = alerts.map(a => {
-    const isOpen = a.status === 'OPEN';
-    const isCritical = a.alert_type === 'UNAUTHORIZED_DOOR_CLOSED';
+    const isCritical = a.alert_type === 'UNAUTHORIZED_DOOR_CLOSED' || a.severity === 'CRITICAL';
     const isCheckin = a.alert_type === 'CHECK_IN_DOOR_CLOSED';
+    const isOpen = a.status === 'OPEN' || (!a.is_acknowledged && a.status !== 'RESOLVED');
 
     let severityClass = 'tag-notice';
     if (isCritical) severityClass = 'tag-critical';
     else if (isCheckin) severityClass = 'tag-info';
+
+    const severityLabel = a.severity || (isCritical ? 'CRITICAL' : (isCheckin ? 'INFO' : 'NOTICE'));
 
     return `
       <tr>
@@ -648,8 +650,8 @@ function renderAlerts() {
         </td>
         <td style="max-width: 380px;">${a.message}</td>
         <td>
-          <span class="tag-badge ${isOpen ? 'tag-alert' : 'tag-success'}">
-            ${a.status}
+          <span class="tag-badge ${severityClass}">
+            ${severityLabel}
           </span>
         </td>
         <td>

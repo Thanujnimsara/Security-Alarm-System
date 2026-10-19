@@ -128,7 +128,30 @@
 
     // 3. Alerts
     if (urlStr.endsWith("/api/alerts") && method === "GET") {
-      return new Response(JSON.stringify(store.alerts), {
+      const normalizedAlerts = (store.alerts || []).map(a => {
+        const isCritical = a.alert_type === 'UNAUTHORIZED_DOOR_CLOSED' || a.severity === 'CRITICAL';
+        return {
+          ...a,
+          severity: a.severity || (isCritical ? 'CRITICAL' : 'INFO'),
+          status: a.status || (a.is_acknowledged ? 'RESOLVED' : 'OPEN')
+        };
+      });
+      return new Response(JSON.stringify(normalizedAlerts), {
+        status: 200, headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    // Resolve Alert (PATCH)
+    if (urlStr.includes("/api/alerts/") && urlStr.endsWith("/resolve") && method === "PATCH") {
+      const match = urlStr.match(/\/api\/alerts\/(\d+)\/resolve/);
+      const alertId = match ? Number(match[1]) : 1;
+      const alert = store.alerts.find(a => a.id === alertId);
+      if (alert) {
+        alert.status = "RESOLVED";
+        alert.is_acknowledged = true;
+        saveStore(store);
+      }
+      return new Response(JSON.stringify({ success: true }), {
         status: 200, headers: { "Content-Type": "application/json" }
       });
     }
@@ -340,6 +363,7 @@
         room_name: room.room_name,
         alert_type: alertType,
         severity: severity,
+        status: "OPEN",
         message: message,
         is_acknowledged: false,
         created_at: new Date().toISOString()
