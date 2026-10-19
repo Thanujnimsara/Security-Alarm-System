@@ -428,7 +428,7 @@ function renderExcelTable(dataToRender) {
   let pendingRev = 0;
 
   dataToRender.forEach(b => {
-    const amt = Number(b.amount || 0);
+    const amt = Number(b.amount || b.total_price || b.paid_amount || 0);
     totalRev += amt;
     if (b.payment_status === 'PAID') paidRev += amt;
     else pendingRev += amt;
@@ -445,23 +445,31 @@ function renderExcelTable(dataToRender) {
   }
 
   tbody.innerHTML = dataToRender.map((b, idx) => {
+    const rawCheckIn = b.check_in || b.check_in_time || b.created_at;
+    const rawCheckOut = b.check_out || b.check_out_time;
+    const inDate = rawCheckIn && !isNaN(new Date(rawCheckIn)) ? new Date(rawCheckIn).toLocaleString() : 'N/A';
+    const outDate = rawCheckOut && !isNaN(new Date(rawCheckOut)) ? new Date(rawCheckOut).toLocaleString() : 'Active / In-Use';
+    const rowAmt = Number(b.amount || b.total_price || b.paid_amount || 0);
+    const rName = b.room_name || `Room ${String(b.room_id || 1).padStart(2, '0')}`;
+    const bCode = b.booking_code || `BK-${String(842100 + (b.id || idx + 1))}`;
+
     return `
       <tr>
         <td style="color: var(--text-muted); text-align: center;">${idx + 1}</td>
-        <td><strong style="color: #818cf8;">${b.booking_code}</strong></td>
-        <td><strong>${b.room_name}</strong></td>
-        <td>${b.customer_name}</td>
+        <td><strong style="color: #818cf8;">${bCode}</strong></td>
+        <td><strong>${rName}</strong></td>
+        <td>${b.customer_name || 'Guest'}</td>
         <td>${b.customer_phone || '-'}</td>
-        <td>${new Date(b.check_in).toLocaleString()}</td>
-        <td>${new Date(b.check_out).toLocaleString()}</td>
-        <td style="font-weight: 700; color: #34d399;">Rs. ${Number(b.amount || 0).toLocaleString()}</td>
+        <td>${inDate}</td>
+        <td>${outDate}</td>
+        <td style="font-weight: 700; color: #34d399;">Rs. ${rowAmt.toLocaleString()}</td>
         <td><span class="tag-badge tag-booking">${b.payment_method || 'CASH'}</span></td>
         <td>
           <span class="tag-badge ${b.payment_status === 'PAID' ? 'tag-success' : 'tag-alert'}">
             ${b.payment_status || 'PENDING'}
           </span>
         </td>
-        <td><span class="tag-badge tag-booking">${b.status}</span></td>
+        <td><span class="tag-badge tag-booking">${b.status || 'BOOKED'}</span></td>
         <td style="color: var(--text-muted);">${b.created_by === 1 ? 'Owner' : 'Manager'}</td>
       </tr>
     `;
@@ -655,13 +663,18 @@ function renderAlerts() {
           </span>
         </td>
         <td>
-          ${isOpen ? `
-            <button class="btn btn-secondary btn-sm" onclick="resolveAlert(${a.id})">
-              Acknowledge
+          <div style="display: flex; gap: 4px; align-items: center;">
+            ${isOpen ? `
+              <button class="btn btn-secondary btn-sm" onclick="resolveAlert(${a.id})">
+                Acknowledge
+              </button>
+            ` : `
+              <span style="color: var(--text-muted); font-size: 0.75rem;">Resolved</span>
+            `}
+            <button class="btn btn-danger btn-sm" style="padding: 4px 8px; font-size: 0.72rem;" onclick="deleteAlert(${a.id})" title="Delete Notification">
+              🗑️ Delete
             </button>
-          ` : `
-            <span style="color: var(--text-muted); font-size: 0.75rem;">Resolved</span>
-          `}
+          </div>
         </td>
       </tr>
     `;
@@ -679,6 +692,27 @@ async function resolveAlert(alertId) {
     await loadAllData();
   } catch (e) {
     console.error('Failed to resolve alert', e);
+  }
+}
+
+async function deleteAlert(alertId) {
+  if (!confirm('Are you sure you want to delete this notification?')) return;
+  try {
+    await fetch(`/api/alerts/${alertId}`, { method: 'DELETE' });
+    await loadAlerts();
+  } catch (e) {
+    console.error('Failed to delete alert', e);
+  }
+}
+
+async function clearAllAlerts() {
+  if (!confirm('Are you sure you want to clear all alert notifications?')) return;
+  try {
+    await fetch('/api/alerts', { method: 'DELETE' });
+    dismissBanner();
+    await loadAlerts();
+  } catch (e) {
+    console.error('Failed to clear alerts', e);
   }
 }
 

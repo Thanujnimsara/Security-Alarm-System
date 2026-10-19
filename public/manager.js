@@ -127,22 +127,30 @@ function renderBookings() {
     return;
   }
 
-  tbody.innerHTML = managerBookings.map(b => {
+  tbody.innerHTML = managerBookings.map((b, idx) => {
+    const rawCheckIn = b.check_in || b.check_in_time || b.created_at;
+    const rawCheckOut = b.check_out || b.check_out_time;
+    const inDate = rawCheckIn && !isNaN(new Date(rawCheckIn)) ? new Date(rawCheckIn).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'N/A';
+    const outDate = rawCheckOut && !isNaN(new Date(rawCheckOut)) ? new Date(rawCheckOut).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Active';
+    const rowAmt = Number(b.amount || b.total_price || b.paid_amount || 0);
+    const rName = b.room_name || `Room ${String(b.room_id || 1).padStart(2, '0')}`;
+    const bCode = b.booking_code || `BK-${String(842100 + (b.id || idx + 1))}`;
+
     return `
       <tr>
-        <td><strong style="color: #818cf8;">${b.booking_code}</strong></td>
-        <td><strong>${b.room_name}</strong></td>
-        <td>${b.customer_name}</td>
+        <td><strong style="color: #818cf8;">${bCode}</strong></td>
+        <td><strong>${rName}</strong></td>
+        <td>${b.customer_name || 'Guest'}</td>
         <td>${b.customer_phone || '-'}</td>
-        <td style="font-size: 0.78rem;">${new Date(b.check_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
-        <td style="font-size: 0.78rem;">${new Date(b.check_out).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
-        <td style="font-weight: 700; color: #34d399;">Rs. ${Number(b.amount || 0).toLocaleString()}</td>
+        <td style="font-size: 0.78rem;">${inDate}</td>
+        <td style="font-size: 0.78rem;">${outDate}</td>
+        <td style="font-weight: 700; color: #34d399;">Rs. ${rowAmt.toLocaleString()}</td>
         <td>
           <span class="tag-badge ${b.payment_status === 'PAID' ? 'tag-success' : 'tag-alert'}">
-            ${b.payment_status} (${b.payment_method || 'CASH'})
+            ${b.payment_status || 'PAID'} (${b.payment_method || 'CASH'})
           </span>
         </td>
-        <td><span class="tag-badge tag-booking">${b.status}</span></td>
+        <td><span class="tag-badge tag-booking">${b.status || 'BOOKED'}</span></td>
         <td>
           <div style="display: flex; gap: 4px;">
             ${b.status === 'BOOKED' ? `

@@ -156,9 +156,57 @@
       });
     }
 
+    // Delete Single Alert (DELETE)
+    if (urlStr.includes("/api/alerts/") && method === "DELETE") {
+      const match = urlStr.match(/\/api\/alerts\/(\d+)/);
+      const alertId = match ? Number(match[1]) : 0;
+      store.alerts = (store.alerts || []).filter(a => a.id !== alertId);
+      saveStore(store);
+      broadcast("ROOM_UPDATE", {});
+      return new Response(JSON.stringify({ success: true, message: "Alert deleted" }), {
+        status: 200, headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    // Clear All Alerts (DELETE)
+    if (urlStr.endsWith("/api/alerts") && method === "DELETE") {
+      store.alerts = [];
+      saveStore(store);
+      broadcast("ROOM_UPDATE", {});
+      return new Response(JSON.stringify({ success: true, message: "All alerts cleared" }), {
+        status: 200, headers: { "Content-Type": "application/json" }
+      });
+    }
+
     // 4. Bookings List (GET)
     if (urlStr.endsWith("/api/bookings") && method === "GET") {
-      return new Response(JSON.stringify(store.bookings), {
+      const normalizedBookings = (store.bookings || []).map((b, idx) => {
+        const room = store.rooms.find(r => r.id === Number(b.room_id));
+        const numAmount = Number(b.amount || b.total_price || b.paid_amount || 0);
+        const validCheckIn = b.check_in || b.check_in_time || b.created_at || new Date().toISOString();
+        const validCheckOut = b.check_out || b.check_out_time || new Date(Date.now() + 3 * 3600 * 1000).toISOString();
+        const rName = b.room_name || (room ? room.room_name : `Room ${String(b.room_id || 1).padStart(2, '0')}`);
+        return {
+          ...b,
+          booking_code: b.booking_code || `BK-${String(842100 + (b.id || idx + 1))}`,
+          room_id: Number(b.room_id || 1),
+          room_name: rName,
+          customer_name: b.customer_name || "Guest",
+          check_in: validCheckIn,
+          check_out: validCheckOut,
+          check_in_time: validCheckIn,
+          check_out_time: validCheckOut,
+          amount: numAmount,
+          total_price: numAmount,
+          paid_amount: numAmount,
+          payment_status: b.payment_status || "PAID",
+          payment_method: b.payment_method || "CASH",
+          status: b.status || "BOOKED"
+        };
+      });
+      store.bookings = normalizedBookings;
+      saveStore(store);
+      return new Response(JSON.stringify(normalizedBookings), {
         status: 200, headers: { "Content-Type": "application/json" }
       });
     }
@@ -170,36 +218,43 @@
       const bookingCode = "BK-" + Math.floor(100000 + Math.random() * 900000);
       const inTime = body.check_in || new Date().toISOString();
       const outTime = body.check_out || new Date(Date.now() + 3 * 3600 * 1000).toISOString();
+      const room = store.rooms.find(r => r.id === roomId);
+      const rName = room ? room.room_name : `Room ${String(roomId).padStart(2, '0')}`;
+      const numAmount = Number(body.amount || 0);
 
       const newBooking = {
         id: store.bookings.length + 1,
         booking_code: bookingCode,
         room_id: roomId,
+        room_name: rName,
         customer_name: body.customer_name || "Guest",
         customer_phone: body.customer_phone || "",
+        check_in: inTime,
+        check_out: outTime,
         check_in_time: inTime,
         check_out_time: outTime,
-        total_price: Number(body.amount || 0),
-        paid_amount: Number(body.amount || 0),
+        amount: numAmount,
+        total_price: numAmount,
+        paid_amount: numAmount,
         payment_status: body.payment_status || "PAID",
         payment_method: body.payment_method || "CASH",
         status: "BOOKED",
+        created_by: 2,
         created_at: new Date().toISOString()
       };
 
       store.bookings.unshift(newBooking);
 
-      const room = store.rooms.find(r => r.id === roomId);
       if (room) {
         room.room_status = "BOOKED";
         room.active_booking = newBooking;
       }
 
-      if (body.amount) {
+      if (numAmount) {
         store.payments.unshift({
           id: store.payments.length + 1,
           booking_id: newBooking.id,
-          amount: Number(body.amount),
+          amount: numAmount,
           payment_method: body.payment_method || "CASH",
           payment_status: body.payment_status || "PAID",
           created_at: new Date().toISOString()
@@ -209,7 +264,7 @@
       store.auditLogs.unshift({
         id: store.auditLogs.length + 1,
         action: "BOOKING_CREATED",
-        details: `Booking ${bookingCode} created for ${room ? room.room_name : 'Room ' + roomId} by Manager`,
+        details: `Booking ${bookingCode} created for ${rName} (Rs. ${numAmount}) by Manager`,
         created_at: new Date().toISOString()
       });
 
@@ -230,20 +285,37 @@
       const b = store.bookings.find(item => item.id === bookingId);
       if (b) {
         b.status = "CHECKED_IN";
-        const room = store.rooms.find(r => r.id === b.room_id);
+        const room = store.rooms.find(r => r.id === Number(b.room_id));
+        const rName = room ? room.room_name : `Room ${b.room_id}`;
         if (room) {
           room.room_status = "OCCUPIED";
           room.door_status = "CLOSED";
           room.active_booking = b;
-          store.auditLogs.unshift({
-            id: store.auditLogs.length + 1,
-            action: "CHECK_IN",
-            details: `Guest ${b.customer_name} checked in to ${room.room_name}`,
-            created_at: new Date().toISOString()
-          });
         }
+
+        const alert = {
+          id: store.alerts.length + 1,
+          room_id: Number(b.room_id),
+          room_name: rName,
+          alert_type: "CHECK_IN_DOOR_CLOSED",
+          severity: "INFO",
+          status: "OPEN",
+          message: `🔔 CHECK-IN ALARM & SMS: ${rName} Checked-In by Manager! Guest: ${b.customer_name} | Code: ${b.booking_code}. Door CLOSED.`,
+          is_acknowledged: false,
+          created_at: new Date().toISOString()
+        };
+
+        store.alerts.unshift(alert);
+        store.auditLogs.unshift({
+          id: store.auditLogs.length + 1,
+          action: "CHECK_IN",
+          details: `Guest ${b.customer_name} checked in to ${rName}`,
+          created_at: new Date().toISOString()
+        });
+
         saveStore(store);
-        broadcast("ROOM_UPDATE", {});
+        broadcast("SECURITY_ALERT", alert);
+        broadcast("ROOM_UPDATE", { room_id: b.room_id, status: "OCCUPIED" });
       }
       return new Response(JSON.stringify({ success: true }), {
         status: 200, headers: { "Content-Type": "application/json" }
@@ -257,20 +329,37 @@
       const b = store.bookings.find(item => item.id === bookingId);
       if (b) {
         b.status = "CHECKED_OUT";
-        const room = store.rooms.find(r => r.id === b.room_id);
+        const room = store.rooms.find(r => r.id === Number(b.room_id));
+        const rName = room ? room.room_name : `Room ${b.room_id}`;
         if (room) {
           room.room_status = "CLEANING";
           room.door_status = "OPEN";
           room.active_booking = null;
-          store.auditLogs.unshift({
-            id: store.auditLogs.length + 1,
-            action: "CHECK_OUT",
-            details: `Guest ${b.customer_name} checked out from ${room.room_name}`,
-            created_at: new Date().toISOString()
-          });
         }
+
+        const alert = {
+          id: store.alerts.length + 1,
+          room_id: Number(b.room_id),
+          room_name: rName,
+          alert_type: "CHECK_OUT_DOOR_OPENED",
+          severity: "NOTICE",
+          status: "OPEN",
+          message: `🚪 CHECK-OUT ALARM & SMS: ${rName} Customer Checked-Out! Guest: ${b.customer_name} departed. Room marked for Cleaning.`,
+          is_acknowledged: false,
+          created_at: new Date().toISOString()
+        };
+
+        store.alerts.unshift(alert);
+        store.auditLogs.unshift({
+          id: store.auditLogs.length + 1,
+          action: "CHECK_OUT",
+          details: `Guest ${b.customer_name} checked out from ${rName}`,
+          created_at: new Date().toISOString()
+        });
+
         saveStore(store);
-        broadcast("ROOM_UPDATE", {});
+        broadcast("SECURITY_ALERT", alert);
+        broadcast("ROOM_UPDATE", { room_id: b.room_id, status: "CLEANING" });
       }
       return new Response(JSON.stringify({ success: true }), {
         status: 200, headers: { "Content-Type": "application/json" }
