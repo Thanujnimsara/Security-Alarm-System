@@ -34,6 +34,7 @@
       bookings: [
         {
           id: 1,
+          booking_code: "BK-842109",
           customer_name: "Kamal Perera",
           room_id: 2,
           room_name: "Room 02",
@@ -121,21 +122,172 @@
       });
     }
 
-    // 4. Bookings
+    // 4. Bookings List (GET)
     if (urlStr.endsWith("/api/bookings") && method === "GET") {
       return new Response(JSON.stringify(store.bookings), {
         status: 200, headers: { "Content-Type": "application/json" }
       });
     }
 
-    // 5. Audit Logs
+    // 5. Create Booking (POST)
+    if (urlStr.endsWith("/api/bookings") && method === "POST") {
+      const body = JSON.parse(options.body || "{}");
+      const roomId = Number(body.room_id || 1);
+      const bookingCode = "BK-" + Math.floor(100000 + Math.random() * 900000);
+      const inTime = body.check_in || new Date().toISOString();
+      const outTime = body.check_out || new Date(Date.now() + 3 * 3600 * 1000).toISOString();
+
+      const newBooking = {
+        id: store.bookings.length + 1,
+        booking_code: bookingCode,
+        room_id: roomId,
+        customer_name: body.customer_name || "Guest",
+        customer_phone: body.customer_phone || "",
+        check_in_time: inTime,
+        check_out_time: outTime,
+        total_price: Number(body.amount || 0),
+        paid_amount: Number(body.amount || 0),
+        payment_status: body.payment_status || "PAID",
+        payment_method: body.payment_method || "CASH",
+        status: "BOOKED",
+        created_at: new Date().toISOString()
+      };
+
+      store.bookings.unshift(newBooking);
+
+      const room = store.rooms.find(r => r.id === roomId);
+      if (room) {
+        room.room_status = "BOOKED";
+        room.active_booking = newBooking;
+      }
+
+      if (body.amount) {
+        store.payments.unshift({
+          id: store.payments.length + 1,
+          booking_id: newBooking.id,
+          amount: Number(body.amount),
+          payment_method: body.payment_method || "CASH",
+          payment_status: body.payment_status || "PAID",
+          created_at: new Date().toISOString()
+        });
+      }
+
+      store.auditLogs.unshift({
+        id: store.auditLogs.length + 1,
+        action: "BOOKING_CREATED",
+        details: `Booking ${bookingCode} created for ${room ? room.room_name : 'Room ' + roomId} by Manager`,
+        created_at: new Date().toISOString()
+      });
+
+      saveStore(store);
+      broadcast("ROOM_UPDATE", { room_id: roomId, status: "BOOKED" });
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: `Booking created successfully with Code: ${bookingCode}`,
+        booking: { id: newBooking.id, booking_code: bookingCode }
+      }), { status: 201, headers: { "Content-Type": "application/json" } });
+    }
+
+    // 6. Check-in (PATCH)
+    if (urlStr.includes("/api/bookings/") && urlStr.endsWith("/check-in") && method === "PATCH") {
+      const match = urlStr.match(/\/api\/bookings\/(\d+)\/check-in/);
+      const bookingId = match ? Number(match[1]) : 1;
+      const b = store.bookings.find(item => item.id === bookingId);
+      if (b) {
+        b.status = "CHECKED_IN";
+        const room = store.rooms.find(r => r.id === b.room_id);
+        if (room) {
+          room.room_status = "OCCUPIED";
+          room.door_status = "CLOSED";
+          room.active_booking = b;
+          store.auditLogs.unshift({
+            id: store.auditLogs.length + 1,
+            action: "CHECK_IN",
+            details: `Guest ${b.customer_name} checked in to ${room.room_name}`,
+            created_at: new Date().toISOString()
+          });
+        }
+        saveStore(store);
+        broadcast("ROOM_UPDATE", {});
+      }
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200, headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    // 7. Check-out (PATCH)
+    if (urlStr.includes("/api/bookings/") && urlStr.endsWith("/check-out") && method === "PATCH") {
+      const match = urlStr.match(/\/api\/bookings\/(\d+)\/check-out/);
+      const bookingId = match ? Number(match[1]) : 1;
+      const b = store.bookings.find(item => item.id === bookingId);
+      if (b) {
+        b.status = "CHECKED_OUT";
+        const room = store.rooms.find(r => r.id === b.room_id);
+        if (room) {
+          room.room_status = "CLEANING";
+          room.door_status = "OPEN";
+          room.active_booking = null;
+          store.auditLogs.unshift({
+            id: store.auditLogs.length + 1,
+            action: "CHECK_OUT",
+            details: `Guest ${b.customer_name} checked out from ${room.room_name}`,
+            created_at: new Date().toISOString()
+          });
+        }
+        saveStore(store);
+        broadcast("ROOM_UPDATE", {});
+      }
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200, headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    // 8. Cancel Booking (PATCH)
+    if (urlStr.includes("/api/bookings/") && urlStr.endsWith("/cancel") && method === "PATCH") {
+      const match = urlStr.match(/\/api\/bookings\/(\d+)\/cancel/);
+      const bookingId = match ? Number(match[1]) : 1;
+      const b = store.bookings.find(item => item.id === bookingId);
+      if (b) {
+        b.status = "CANCELLED";
+        const room = store.rooms.find(r => r.id === b.room_id);
+        if (room) {
+          room.room_status = "AVAILABLE";
+          room.active_booking = null;
+        }
+        saveStore(store);
+        broadcast("ROOM_UPDATE", {});
+      }
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200, headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    // 9. Clean Room (PATCH)
+    if (urlStr.includes("/api/rooms/") && urlStr.endsWith("/clean") && method === "PATCH") {
+      const match = urlStr.match(/\/api\/rooms\/(\d+)\/clean/);
+      const roomId = match ? Number(match[1]) : 1;
+      const room = store.rooms.find(r => r.id === roomId);
+      if (room) {
+        room.room_status = "AVAILABLE";
+        room.door_status = "OPEN";
+        room.active_booking = null;
+        saveStore(store);
+        broadcast("ROOM_UPDATE", {});
+      }
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200, headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    // 10. Audit Logs
     if (urlStr.endsWith("/api/audit-logs") && method === "GET") {
       return new Response(JSON.stringify(store.auditLogs), {
         status: 200, headers: { "Content-Type": "application/json" }
       });
     }
 
-    // 6. Door Events
+    // 11. Door Events
     if (urlStr.endsWith("/api/door-events") && method === "POST") {
       const body = JSON.parse(options.body || "{}");
       const roomId = Number(body.roomId || body.room_id || 1);
@@ -195,7 +347,7 @@
       });
     }
 
-    // 7. Security Alert Reset
+    // 12. Security Alert Reset
     if (urlStr.includes("/api/security/reset") && method === "POST") {
       store.alerts = store.alerts.map(a => ({ ...a, is_acknowledged: true }));
       saveStore(store);
@@ -205,7 +357,7 @@
       });
     }
 
-    // 8. Auth Login
+    // 13. Auth Login
     if (urlStr.includes("/api/auth/login") && method === "POST") {
       const body = JSON.parse(options.body || "{}");
       const role = body.username === "manager" ? "MANAGER" : "OWNER";
