@@ -63,6 +63,13 @@ function getAudioContext() {
   return audioCtx;
 }
 
+// Unlock audio immediately on first click anywhere
+window.addEventListener('click', () => {
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}, { passive: true });
+
 // 1. Luxury Hotel Ding-Dong (Two-tone Chime)
 function playHotelChime() {
   const ctx = getAudioContext();
@@ -569,6 +576,11 @@ function renderHardwareRack() {
 // Toggle Door Sensor (Simulated event or Webhook)
 async function toggleDoorSensor(roomId, status) {
   try {
+    const ctx = getAudioContext();
+    if (ctx && ctx.state === 'suspended') {
+      await ctx.resume();
+    }
+
     const res = await fetch('/api/door-events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

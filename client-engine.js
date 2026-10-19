@@ -67,20 +67,31 @@
   }
 
   // Mock EventSource
+  const activeSseClients = [];
   const listeners = [];
   window.EventSource = function(url) {
     this.url = url;
+    activeSseClients.push(this);
     setTimeout(() => {
       if (typeof this.onopen === "function") this.onopen();
     }, 100);
     this.addEventListener = function(evt, cb) { listeners.push(cb); };
     this.removeEventListener = function() {};
-    this.close = function() {};
+    this.close = function() {
+      const idx = activeSseClients.indexOf(this);
+      if (idx !== -1) activeSseClients.splice(idx, 1);
+    };
   };
 
   function broadcast(type, data) {
+    const payload = { data: JSON.stringify({ type, data }) };
+    activeSseClients.forEach(client => {
+      if (typeof client.onmessage === "function") {
+        try { client.onmessage(payload); } catch(e) {}
+      }
+    });
     listeners.forEach(cb => {
-      try { cb({ data: JSON.stringify({ type, data }) }); } catch(e) {}
+      try { cb(payload); } catch(e) {}
     });
   }
 
@@ -339,10 +350,24 @@
         created_at: new Date().toISOString()
       });
 
+      const isBreach = isClosed && !room.active_booking;
+      const dataPayload = {
+        roomId: room.id,
+        roomName: room.room_name,
+        doorStatus: isClosed ? "CLOSED" : "OPEN",
+        activeBooking: room.active_booking || null,
+        isAlertTriggered: isClosed, // Always true for CLOSED doors
+        alertDetails: alert
+      };
+
       saveStore(store);
       broadcast("SECURITY_ALERT", alert);
 
-      return new Response(JSON.stringify({ success: true, alert, room }), {
+      return new Response(JSON.stringify({
+        success: true,
+        message: `Door event processed for Room ID ${room.id}: ${room.door_status}`,
+        data: dataPayload
+      }), {
         status: 200, headers: { "Content-Type": "application/json" }
       });
     }
