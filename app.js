@@ -594,8 +594,13 @@ async function toggleDoorSensor(roomId, status) {
     if (result.data && result.data.isAlertTriggered) {
       showSirenBanner(result.data.alertDetails);
       triggerAlarmForEvent(result.data.alertDetails);
+    } else if (status === 'OPEN') {
+      dismissBanner();
     }
     await loadAllData();
+    if (activeTab === 'hardware') {
+      renderHardwareRack();
+    }
   } catch (e) {
     console.error('Sensor trigger failed', e);
   }

@@ -302,10 +302,10 @@
     if (urlStr.endsWith("/api/door-events") && method === "POST") {
       const body = JSON.parse(options.body || "{}");
       const roomId = Number(body.roomId || body.room_id || 1);
-      const action = body.action || (body.state === "OPEN" ? "DOOR_OPEN" : "DOOR_CLOSED");
+      const rawStatus = (body.door_status || body.status || body.state || body.action || "").toUpperCase();
+      const isClosed = rawStatus.includes("CLOSE");
 
       const room = store.rooms.find(r => r.id === roomId) || store.rooms[0];
-      const isClosed = action === "DOOR_CLOSED" || action === "DOOR_CLOSE";
       room.door_status = isClosed ? "CLOSED" : "OPEN";
 
       let alertType = null;
@@ -345,7 +345,7 @@
 
       store.auditLogs.unshift({
         id: store.auditLogs.length + 1,
-        action: action,
+        action: isClosed ? "DOOR_CLOSED" : "DOOR_OPENED",
         details: message,
         created_at: new Date().toISOString()
       });
