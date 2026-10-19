@@ -274,19 +274,25 @@
       });
     }
 
-    // 9. Clean Room (PATCH)
-    if (urlStr.includes("/api/rooms/") && urlStr.endsWith("/clean") && method === "PATCH") {
-      const match = urlStr.match(/\/api\/rooms\/(\d+)\/clean/);
+    // 9. Clean Room / Mark Available (PATCH)
+    if (urlStr.includes("/api/rooms/") && (urlStr.includes("/mark-available") || urlStr.includes("/clean")) && method === "PATCH") {
+      const match = urlStr.match(/\/api\/rooms\/(\d+)/);
       const roomId = match ? Number(match[1]) : 1;
       const room = store.rooms.find(r => r.id === roomId);
       if (room) {
         room.room_status = "AVAILABLE";
         room.door_status = "OPEN";
         room.active_booking = null;
+        store.auditLogs.unshift({
+          id: store.auditLogs.length + 1,
+          action: "ROOM_AVAILABLE",
+          details: `${room.room_name} marked as cleaned and AVAILABLE`,
+          created_at: new Date().toISOString()
+        });
         saveStore(store);
-        broadcast("ROOM_UPDATE", {});
+        broadcast("ROOM_UPDATE", { room_id: roomId, room_status: "AVAILABLE" });
       }
-      return new Response(JSON.stringify({ success: true }), {
+      return new Response(JSON.stringify({ success: true, message: `Room ${roomId} marked as AVAILABLE` }), {
         status: 200, headers: { "Content-Type": "application/json" }
       });
     }
