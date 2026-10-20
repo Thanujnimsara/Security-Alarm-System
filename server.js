@@ -205,6 +205,7 @@ app.post("/api/bookings", async (req, res) => {
     const {
       room_id,
       customer_name,
+      customer_nic,
       customer_phone,
       check_in,
       check_out,
@@ -250,6 +251,7 @@ app.post("/api/bookings", async (req, res) => {
         booking_code: bookingCode,
         room_id: Number(room_id),
         customer_name,
+        customer_nic: customer_nic || "",
         customer_phone: customer_phone || "",
         check_in: inTime,
         check_out: outTime,

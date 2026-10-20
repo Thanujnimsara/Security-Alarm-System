@@ -467,7 +467,10 @@ function renderExcelTable(dataToRender) {
         <td style="color: var(--text-muted); text-align: center;">${idx + 1}</td>
         <td><strong style="color: #818cf8;">${bCode}</strong></td>
         <td><strong>${rName}</strong></td>
-        <td>${b.customer_name || 'Guest'}</td>
+        <td>
+          <strong>${b.customer_name || 'Guest'}</strong>
+          ${b.customer_nic ? `<br><small style="color: #94a3b8; font-size: 0.72rem;">NIC: ${b.customer_nic}</small>` : ''}
+        </td>
         <td>${b.customer_phone || '-'}</td>
         <td>${inDate}</td>
         <td>${outDate}</td>
@@ -494,6 +497,7 @@ function filterExcelTable() {
   const filtered = bookings.filter(b => 
     (b.booking_code && b.booking_code.toLowerCase().includes(query)) ||
     (b.customer_name && b.customer_name.toLowerCase().includes(query)) ||
+    (b.customer_nic && b.customer_nic.toLowerCase().includes(query)) ||
     (b.customer_phone && b.customer_phone.toLowerCase().includes(query)) ||
     (b.room_name && b.room_name.toLowerCase().includes(query)) ||
     (b.payment_method && b.payment_method.toLowerCase().includes(query)) ||
@@ -514,6 +518,7 @@ function exportBookingsToCSV() {
     "Booking Code",
     "Room Name",
     "Customer Name",
+    "Customer NIC",
     "Customer Phone",
     "Check-in Time",
     "Check-out Time",
@@ -529,6 +534,7 @@ function exportBookingsToCSV() {
     `"${b.booking_code}"`,
     `"${b.room_name}"`,
     `"${b.customer_name}"`,
+    `"${b.customer_nic || ''}"`,
     `"${b.customer_phone || ''}"`,
     `"${new Date(b.check_in).toLocaleString()}"`,
     `"${new Date(b.check_out).toLocaleString()}"`,
@@ -891,6 +897,7 @@ async function submitBooking(event) {
   event.preventDefault();
   const roomId = document.getElementById('bookRoomSelect').value;
   const customerName = document.getElementById('bookCustomerName').value;
+  const customerNic = document.getElementById('bookCustomerNic') ? document.getElementById('bookCustomerNic').value.trim() : '';
   const customerPhone = document.getElementById('bookCustomerPhone').value;
   const amount = document.getElementById('bookAmount').value;
   const paymentMethod = document.getElementById('bookPaymentMethod').value;
@@ -903,6 +910,7 @@ async function submitBooking(event) {
       body: JSON.stringify({
         room_id: roomId,
         customer_name: customerName,
+        customer_nic: customerNic,
         customer_phone: customerPhone,
         amount,
         payment_method: paymentMethod,

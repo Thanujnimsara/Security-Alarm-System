@@ -154,16 +154,23 @@
             <input type="text" id="bookCustomerName" class="form-input" placeholder="e.g. Sunil Shantha" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Contact Phone</label>
-            <input type="text" id="bookCustomerPhone" class="form-input" placeholder="077 123 4567">
+            <label class="form-label">Customer NIC / National ID</label>
+            <input type="text" id="bookCustomerNic" class="form-input" placeholder="e.g. 199512345678 or 951234567V">
           </div>
         </div>
 
         <div class="form-row">
           <div class="form-group">
+            <label class="form-label">Contact Phone</label>
+            <input type="text" id="bookCustomerPhone" class="form-input" placeholder="077 123 4567">
+          </div>
+          <div class="form-group">
             <label class="form-label">Amount (LKR)</label>
             <input type="number" id="bookAmount" class="form-input" placeholder="e.g. 5000" required>
           </div>
+        </div>
+
+        <div class="form-row">
           <div class="form-group">
             <label class="form-label">Payment Method</label>
             <select id="bookPaymentMethod" class="form-select">
@@ -172,22 +179,22 @@
               <option value="BANK_TRANSFER">Bank Transfer</option>
             </select>
           </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Reservation Type</label>
-            <select id="bookType" class="form-select" onchange="handleBookingTypeChange()">
-              <option value="WALK_IN">🚶 Walk-in (Current / Now)</option>
-              <option value="PHONE">📞 Phone Call Advance Booking</option>
-              <option value="ONLINE">🌐 Online / Website Booking</option>
-            </select>
-          </div>
           <div class="form-group">
             <label class="form-label">Payment Status</label>
             <select id="bookPaymentStatus" class="form-select">
               <option value="PAID">PAID (Full Cash / Card)</option>
               <option value="PENDING">PENDING (Pay at departure)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group" style="width: 100%;">
+            <label class="form-label">Reservation Type</label>
+            <select id="bookType" class="form-select" onchange="handleBookingTypeChange()">
+              <option value="WALK_IN">🚶 Walk-in (Current / Now)</option>
+              <option value="PHONE">📞 Phone Call Advance Booking</option>
+              <option value="ONLINE">🌐 Online / Website Booking</option>
             </select>
           </div>
         </div>

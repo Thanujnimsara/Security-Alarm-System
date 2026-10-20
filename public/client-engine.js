@@ -272,6 +272,7 @@
         room_id: roomId,
         room_name: rName,
         customer_name: body.customer_name || "Guest",
+        customer_nic: body.customer_nic || body.nic || "",
         customer_phone: body.customer_phone || "",
         check_in: inTime,
         check_out: outTime,
@@ -337,6 +338,7 @@
           room.active_booking = b;
         }
 
+        const nicText = b.customer_nic ? ` (NIC: ${b.customer_nic})` : '';
         const alert = {
           id: store.alerts.length + 1,
           room_id: Number(b.room_id),
@@ -344,7 +346,7 @@
           alert_type: "CHECK_IN_DOOR_CLOSED",
           severity: "INFO",
           status: "OPEN",
-          message: `🔔 CHECK-IN ALARM & SMS: ${rName} Checked-In by Manager! Door CLOSED. Guest: ${b.customer_name} | Invoice Code: ${b.booking_code}`,
+          message: `🔔 CHECK-IN ALARM & SMS: ${rName} Checked-In by Manager! Door CLOSED. Guest: ${b.customer_name}${nicText} | Invoice Code: ${b.booking_code}`,
           is_acknowledged: false,
           created_at: new Date().toISOString()
         };
@@ -381,6 +383,7 @@
           room.active_booking = null;
         }
 
+        const nicText = b.customer_nic ? ` (NIC: ${b.customer_nic})` : '';
         const alert = {
           id: store.alerts.length + 1,
           room_id: Number(b.room_id),
@@ -388,7 +391,7 @@
           alert_type: "CHECK_OUT_DOOR_OPENED",
           severity: "NOTICE",
           status: "OPEN",
-          message: `🚪 CHECK-OUT ALARM: ${rName} Customer Departed. Room marked for Cleaning. Guest: ${b.customer_name} | Invoice Code: ${b.booking_code}`,
+          message: `🚪 CHECK-OUT ALARM: ${rName} Customer Departed. Room marked for Cleaning. Guest: ${b.customer_name}${nicText} | Invoice Code: ${b.booking_code}`,
           is_acknowledged: false,
           created_at: new Date().toISOString()
         };

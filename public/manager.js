@@ -73,7 +73,10 @@ function renderRooms() {
           <div style="background: rgba(0,0,0,0.25); border-radius: 8px; padding: 12px; margin-bottom: 1rem;">
             <div style="font-size: 0.82rem; color: #94a3b8; margin-bottom: 4px;">Current Guest Status:</div>
             ${hasBooking ? `
-              <div style="font-weight: 700; color: #f8fafc; font-size: 0.95rem;">${room.active_booking.customer_name}</div>
+              <div style="font-weight: 700; color: #f8fafc; font-size: 0.95rem;">
+                ${room.active_booking.customer_name}
+                ${room.active_booking.customer_nic ? `<span style="font-size: 0.72rem; color: #94a3b8; font-weight: 500;"> (NIC: ${room.active_booking.customer_nic})</span>` : ''}
+              </div>
               <div style="font-size: 0.78rem; color: #818cf8; margin-top: 2px;">Invoice: ${room.active_booking.booking_code}</div>
               <div style="font-size: 0.75rem; color: #34d399; margin-top: 4px;">Status: ${room.active_booking.status}</div>
             ` : `
@@ -155,7 +158,10 @@ function renderBookings() {
       <tr>
         <td><strong style="color: #818cf8;">${bCode}</strong></td>
         <td><strong>${rName}</strong></td>
-        <td>${b.customer_name || 'Guest'}</td>
+        <td>
+          <strong>${b.customer_name || 'Guest'}</strong>
+          ${b.customer_nic ? `<br><span style="font-size: 0.72rem; color: #94a3b8; font-weight: 500;">NIC: ${b.customer_nic}</span>` : ''}
+        </td>
         <td>${b.customer_phone || '-'}</td>
         <td style="font-size: 0.78rem;">${inDate}</td>
         <td style="font-size: 0.78rem;">${outDate}</td>
@@ -220,6 +226,7 @@ async function submitManagerBooking(event) {
   event.preventDefault();
   const roomId = document.getElementById('bookRoomSelect').value;
   const customerName = document.getElementById('bookCustomerName').value;
+  const customerNic = document.getElementById('bookCustomerNic') ? document.getElementById('bookCustomerNic').value.trim() : '';
   const customerPhone = document.getElementById('bookCustomerPhone').value;
   const amount = document.getElementById('bookAmount').value;
   const paymentMethod = document.getElementById('bookPaymentMethod').value;
@@ -235,6 +242,7 @@ async function submitManagerBooking(event) {
       body: JSON.stringify({
         room_id: roomId,
         customer_name: customerName,
+        customer_nic: customerNic,
         customer_phone: customerPhone,
         check_in: checkIn,
         check_out: checkOut,
@@ -249,7 +257,7 @@ async function submitManagerBooking(event) {
     if (data.success) {
       closeBookingModal();
       await loadManagerData();
-      alert(`✅ Reservation Created & Bill Generated!\nCode: ${data.booking.booking_code}\nGuest: ${customerName}\nCheck-in: ${new Date(checkIn).toLocaleString()}\nCheck-out: ${new Date(checkOut).toLocaleString()}\nAmount: Rs. ${Number(amount).toLocaleString()}`);
+      alert(`✅ Reservation Created & Bill Generated!\nCode: ${data.booking.booking_code}\nGuest: ${customerName}${customerNic ? ` (NIC: ${customerNic})` : ''}\nCheck-in: ${new Date(checkIn).toLocaleString()}\nCheck-out: ${new Date(checkOut).toLocaleString()}\nAmount: Rs. ${Number(amount).toLocaleString()}`);
     } else {
       alert('Error: ' + data.error);
     }
