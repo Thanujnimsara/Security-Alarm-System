@@ -66,9 +66,65 @@
     localStorage.setItem("hotel_security_data", JSON.stringify(data));
   }
 
-  // Mock EventSource
+  // Cross-Tab Event Bus via BroadcastChannel & LocalStorage
   const activeSseClients = [];
   const listeners = [];
+  const tabInstanceId = "tab_" + Math.random().toString(36).substr(2, 9);
+  const syncChannel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("hotel_security_sync_channel") : null;
+
+  function dispatchToLocalClients(type, data) {
+    const payload = { data: JSON.stringify({ type, data }) };
+    activeSseClients.forEach(client => {
+      if (typeof client.onmessage === "function") {
+        try { client.onmessage(payload); } catch(e) { console.error("Local SSE error:", e); }
+      }
+    });
+    listeners.forEach(cb => {
+      try { cb(payload); } catch(e) { console.error("Local listener error:", e); }
+    });
+  }
+
+  function broadcast(type, data) {
+    // 1. Dispatch in the active tab
+    dispatchToLocalClients(type, data);
+
+    const packet = { type, data, sender: tabInstanceId, ts: Date.now() };
+
+    // 2. Broadcast across tabs via BroadcastChannel (Chrome, Edge, Firefox, Safari)
+    if (syncChannel) {
+      try {
+        syncChannel.postMessage(packet);
+      } catch (e) {
+        console.warn("BroadcastChannel postMessage error:", e);
+      }
+    }
+
+    // 3. Fallback broadcast across tabs via localStorage storage event
+    try {
+      localStorage.setItem("hotel_security_cross_tab_event", JSON.stringify(packet));
+    } catch (e) {}
+  }
+
+  // Listen for incoming cross-tab events from other tabs
+  if (syncChannel) {
+    syncChannel.onmessage = (event) => {
+      if (event.data && event.data.sender !== tabInstanceId) {
+        dispatchToLocalClients(event.data.type, event.data.data);
+      }
+    };
+  }
+
+  window.addEventListener("storage", (e) => {
+    if (e.key === "hotel_security_cross_tab_event" && e.newValue) {
+      try {
+        const packet = JSON.parse(e.newValue);
+        if (packet && packet.sender !== tabInstanceId) {
+          dispatchToLocalClients(packet.type, packet.data);
+        }
+      } catch (err) {}
+    }
+  });
+
   window.EventSource = function(url) {
     this.url = url;
     activeSseClients.push(this);
@@ -82,18 +138,6 @@
       if (idx !== -1) activeSseClients.splice(idx, 1);
     };
   };
-
-  function broadcast(type, data) {
-    const payload = { data: JSON.stringify({ type, data }) };
-    activeSseClients.forEach(client => {
-      if (typeof client.onmessage === "function") {
-        try { client.onmessage(payload); } catch(e) {}
-      }
-    });
-    listeners.forEach(cb => {
-      try { cb(payload); } catch(e) {}
-    });
-  }
 
   // Intercept Fetch
   const originalFetch = window.fetch;
@@ -300,7 +344,7 @@
           alert_type: "CHECK_IN_DOOR_CLOSED",
           severity: "INFO",
           status: "OPEN",
-          message: `🔔 CHECK-IN ALARM & SMS: ${rName} Checked-In by Manager! Guest: ${b.customer_name} | Code: ${b.booking_code}. Door CLOSED.`,
+          message: `🔔 CHECK-IN ALARM & SMS: ${rName} Checked-In by Manager! Door CLOSED. Guest: ${b.customer_name} | Invoice Code: ${b.booking_code}`,
           is_acknowledged: false,
           created_at: new Date().toISOString()
         };
@@ -344,7 +388,7 @@
           alert_type: "CHECK_OUT_DOOR_OPENED",
           severity: "NOTICE",
           status: "OPEN",
-          message: `🚪 CHECK-OUT ALARM & SMS: ${rName} Customer Checked-Out! Guest: ${b.customer_name} departed. Room marked for Cleaning.`,
+          message: `🚪 CHECK-OUT ALARM: ${rName} Customer Departed. Room marked for Cleaning. Guest: ${b.customer_name} | Invoice Code: ${b.booking_code}`,
           is_acknowledged: false,
           created_at: new Date().toISOString()
         };

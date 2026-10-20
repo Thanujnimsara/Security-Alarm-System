@@ -600,10 +600,25 @@ body {
   display: inline-block;
 }
 
+.tag-critical,
 .tag-alert {
   background: rgba(225, 29, 72, 0.2);
   color: #fda4af;
   border: 1px solid rgba(225, 29, 72, 0.4);
+}
+
+.tag-info {
+  background: rgba(14, 165, 233, 0.25);
+  color: #38bdf8;
+  border: 1px solid rgba(14, 165, 233, 0.5);
+  font-weight: 700;
+}
+
+.tag-notice {
+  background: rgba(245, 158, 11, 0.22);
+  color: #fcd34d;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  font-weight: 700;
 }
 
 .tag-booking {

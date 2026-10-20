@@ -5,8 +5,23 @@ let managerBookings = [];
 document.addEventListener('DOMContentLoaded', () => {
   initClock();
   loadManagerData();
-  setInterval(loadManagerData, 8000); // Poll updates every 8 seconds
+  initManagerSse();
+  setInterval(loadManagerData, 8000); // Poll updates every 8 seconds fallback
 });
+
+function initManagerSse() {
+  try {
+    const evtSource = new EventSource('/api/events/stream');
+    evtSource.onmessage = (event) => {
+      try {
+        const parsed = JSON.parse(event.data);
+        if (parsed.type === 'ROOM_UPDATE' || parsed.type === 'SECURITY_ALERT' || parsed.type === 'AUDIT_LOG_ADDED') {
+          loadManagerData();
+        }
+      } catch (e) {}
+    };
+  } catch (e) {}
+}
 
 function initClock() {
   const clockEl = document.getElementById('managerClock');

@@ -63,12 +63,14 @@ function getAudioContext() {
   return audioCtx;
 }
 
-// Unlock audio immediately on first click anywhere
-window.addEventListener('click', () => {
-  if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
-}, { passive: true });
+// Unlock audio immediately on first user interaction anywhere
+['click', 'keydown', 'pointerdown', 'touchstart'].forEach(evt => {
+  window.addEventListener(evt, () => {
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+  }, { passive: true });
+});
 
 // 1. Luxury Hotel Ding-Dong (Two-tone Chime)
 function playHotelChime() {
@@ -190,18 +192,25 @@ function playToneSample(toneType, voiceMsg = null) {
 function triggerAlarmForEvent(alert) {
   if (!soundEnabled) return;
   const isBreach = alert.severity === 'CRITICAL' || alert.alert_type === 'UNAUTHORIZED_DOOR_CLOSED';
+  const isCheckIn = alert.alert_type === 'CHECK_IN_DOOR_CLOSED' || (alert.message && alert.message.includes('CHECK-IN'));
+  const isCheckOut = alert.alert_type === 'CHECK_OUT_DOOR_OPENED' || (alert.message && alert.message.includes('CHECK-OUT'));
+  const rName = alert.room_name || (alert.room_id ? `Room ${String(alert.room_id).padStart(2, '0')}` : 'Room');
 
   if (isBreach) {
     // High alert siren
     playSecuritySiren();
-    const voiceMsg = `Warning! Room ${alert.room_id} door closed without booking!`;
+    const voiceMsg = `Warning! ${rName} door closed without booking!`;
     setTimeout(() => speakText(voiceMsg), 800);
-  } else if (alert.alert_type === 'CHECK_IN_DOOR_CLOSED') {
-    // Check-in chime
-    playToneSample(currentTone, `Room ${alert.room_id} door closed. Customer check in.`);
-  } else if (alert.alert_type === 'CHECK_OUT_DOOR_OPENED') {
-    // Check-out chime
-    playToneSample(currentTone, `Room ${alert.room_id} door opened. Customer departed.`);
+  } else if (isCheckIn) {
+    // Check-in chime alert
+    playHotelChime();
+    const voiceMsg = `${rName} checked in by manager. Door closed.`;
+    setTimeout(() => speakText(voiceMsg), 650);
+  } else if (isCheckOut) {
+    // Check-out chime alert
+    playHotelChime();
+    const voiceMsg = `${rName} customer departed. Room marked for cleaning.`;
+    setTimeout(() => speakText(voiceMsg), 650);
   } else {
     playToneSample(currentTone, alert.message);
   }
@@ -639,7 +648,7 @@ function renderAlerts() {
 
   tbody.innerHTML = alerts.map(a => {
     const isCritical = a.alert_type === 'UNAUTHORIZED_DOOR_CLOSED' || a.severity === 'CRITICAL';
-    const isCheckin = a.alert_type === 'CHECK_IN_DOOR_CLOSED';
+    const isCheckin = a.alert_type === 'CHECK_IN_DOOR_CLOSED' || a.severity === 'INFO' || (a.message && a.message.includes('CHECK-IN'));
     const isOpen = a.status === 'OPEN' || (!a.is_acknowledged && a.status !== 'RESOLVED');
 
     let severityClass = 'tag-notice';
@@ -820,17 +829,40 @@ function updateKpis() {
 function showSirenBanner(alert) {
   const banner = document.getElementById('securitySirenBanner');
   const icon = document.getElementById('sirenIcon');
-  if (alert.severity === 'CRITICAL' || alert.alert_type === 'UNAUTHORIZED_DOOR_CLOSED') {
+  const title = document.getElementById('sirenTitle');
+  const desc = document.getElementById('sirenDesc');
+  if (!banner || !icon || !title || !desc) return;
+
+  const rName = alert.room_name || (alert.room_id ? `Room ${String(alert.room_id).padStart(2, '0')}` : 'Room');
+  const isBreach = alert.severity === 'CRITICAL' || alert.alert_type === 'UNAUTHORIZED_DOOR_CLOSED';
+  const isCheckIn = alert.alert_type === 'CHECK_IN_DOOR_CLOSED' || (alert.message && alert.message.includes('CHECK-IN'));
+  const isCheckOut = alert.alert_type === 'CHECK_OUT_DOOR_OPENED' || (alert.message && alert.message.includes('CHECK-OUT'));
+
+  if (isBreach) {
     icon.innerText = '🚨';
-    document.getElementById('sirenTitle').innerText = `🚨 SECURITY ALERT: Unauthorized Door Closed!`;
-  } else if (alert.alert_type === 'CHECK_IN_DOOR_CLOSED') {
+    title.innerText = `🚨 SECURITY ALERT: Unauthorized Door Closed in ${rName}!`;
+    desc.innerText = alert.message || 'Door contact closed without an active booking!';
+    banner.style.background = 'rgba(225, 29, 72, 0.25)';
+    banner.style.borderColor = 'rgba(225, 29, 72, 0.6)';
+  } else if (isCheckIn) {
     icon.innerText = '🔔';
-    document.getElementById('sirenTitle').innerText = `🔔 CHECK-IN ALARM: Door Closed (Customer Arrived)`;
-  } else {
+    title.innerText = `🔔 CHECK-IN ALARM & SMS: ${rName} Checked-In by Manager! Door CLOSED.`;
+    desc.innerText = alert.message || `${rName} Checked-In by Manager! Door CLOSED.`;
+    banner.style.background = 'rgba(14, 165, 233, 0.22)';
+    banner.style.borderColor = 'rgba(14, 165, 233, 0.6)';
+  } else if (isCheckOut) {
     icon.innerText = '🚪';
-    document.getElementById('sirenTitle').innerText = `🚪 CHECK-OUT ALARM: Door Opened (Customer Departed)`;
+    title.innerText = `🚪 CHECK-OUT ALARM: ${rName} Customer Departed. Room marked for Cleaning.`;
+    desc.innerText = alert.message || `${rName} Customer Departed. Room marked for Cleaning.`;
+    banner.style.background = 'rgba(245, 158, 11, 0.22)';
+    banner.style.borderColor = 'rgba(245, 158, 11, 0.6)';
+  } else {
+    icon.innerText = 'ℹ️';
+    title.innerText = `🔔 SYSTEM ALARM: ${rName} Event`;
+    desc.innerText = alert.message || 'Door event detected.';
+    banner.style.background = 'rgba(99, 102, 241, 0.22)';
+    banner.style.borderColor = 'rgba(99, 102, 241, 0.5)';
   }
-  document.getElementById('sirenDesc').innerText = alert.message || 'Door event detected.';
   banner.style.display = 'flex';
 }
 
